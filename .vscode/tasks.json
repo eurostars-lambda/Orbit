@@ -4,6 +4,14 @@
     "version": "2.0.0",
     "tasks": [
         {
+            "label": "setup_sbtc_env",
+            "type": "shell",
+            "dependsOn": ["setup_python_env"],
+            "linux": {
+                "command": "PYTHONPATH=$PYTHONPATH:${workspaceFolder}/_isaac_sim/exts/omni.isaac.doosan && printenv >${workspaceFolder}/.vscode/.python.env "
+            }
+        },
+        {
             // setup python env
             "label": "setup_python_env",
             "type": "shell",
