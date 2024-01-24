@@ -59,7 +59,7 @@ def overwrite_python_analysis_extra_paths(orbit_settings: str) -> str:
     path_names = [path_name.strip().strip('"') for path_name in path_names]
 
     ###### SBTC Modifications
-    path_names.append("exts/omni.isaac.doosan")
+    #path_names.append("exts/omni.isaac.doosan")
     #########################
 
     path_names = ['"${workspaceFolder}/_isaac_sim/' + path_name + '"' for path_name in path_names if len(path_name) > 0]

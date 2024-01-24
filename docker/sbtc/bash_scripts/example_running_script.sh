@@ -10,6 +10,7 @@ docker run --name orbit_oo --entrypoint bash -it --gpus all -e "ACCEPT_EULA=Y" -
     	-v ~/docker/orbit_oo/data:/root/.local/share/ov/data:rw \
     	-v ~/docker/orbit_oo/documents:/root/Documents:rw \
 		-v ~/docker/orbit_oo/.nvidia-omniverse:/root/.nvidia-omniverse:rw \
-    	-v ~/nvidia/sbtc_scripts/:/isaac-sim/sbtc_scripts/:rw \
 		-v ~/documents_oo/:/docs/:rw \
 		orbit_sbtc_v0.2.0
+
+		#-v ~/documents_oo/sbtc-robots/src/omni.isaac.doosan/:/isaac-sim/exts/omni.isaac.doosan/:rw \
