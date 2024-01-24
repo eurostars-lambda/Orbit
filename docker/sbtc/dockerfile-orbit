@@ -2,8 +2,11 @@
 # 
 # Written by Özhan Özen, SBTC, Switzerland Innovation Park Biel/Bienne.
 #
-# RUN the following: docker compose build --no-cache --progress=plain
-# or docker compose build --no-cache --progress=plain > build_output.txt 
+# RUN the following: 
+#
+# docker compose build --no-cache --progress=plain
+# or 
+# docker compose build --no-cache --progress=plain > build_output.txt 
 
 ARG ISAACSIM_VERSION=2023.1.0-hotfix.1
 
@@ -24,9 +27,11 @@ RUN apt-get update && \
     wget \
     ncurses-term && \
     apt -y autoremove && apt clean autoclean && \
-    rm -rf /var/lib/apt/lists/* && \
-    git clone https://github.com/Swiss-Battery-Technology-Center/Orbit.git --depth 1 -b devel /orbit && \
-    ln -sf "/isaac-sim" ${ORBIT_PATH}/_isaac_sim && \
+    rm -rf /var/lib/apt/lists/* 
+
+COPY ../../ ${ORBIT_PATH}
+
+RUN DEBIAN_FRONTEND=noninteractive ln -sf "/isaac-sim" ${ORBIT_PATH}/_isaac_sim && \
     echo "alias orbit=${ORBIT_PATH}/orbit.sh" >> ${HOME}/.bashrc
 
 RUN DEBIAN_FRONTEND=noninteractive \
@@ -38,7 +43,7 @@ RUN DEBIAN_FRONTEND=noninteractive \
 ENV PATH="/opt/miniconda/bin:$PATH"
 RUN conda update -n base -c defaults conda
 
-RUN DEBIAN_FRONTEND=noninteractive /orbit/orbit.sh --conda && echo "conda deactivate && conda activate orbit" >> ${HOME}/.bashrc
+RUN DEBIAN_FRONTEND=noninteractive ${ORBIT_PATH}/orbit.sh --conda && echo "conda deactivate && conda activate orbit" >> ${HOME}/.bashrc
 SHELL ["/opt/miniconda/bin/conda", "run", "-n", "orbit", "/bin/bash", "-c"]
  
 RUN DEBIAN_FRONTEND=noninteractive \

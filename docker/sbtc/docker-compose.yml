@@ -2,13 +2,11 @@ version: '3.8'
 services:
   orbit_sbtc:
     build:
-      context: .
-      dockerfile: dockerfile-orbit
+      context: ../../
+      dockerfile: docker/sbtc/dockerfile-orbit
     image: orbit_sbtc_v0.2.0
     container_name: orbit_sbtc_v0.2.0
     network_mode: "host"
-    volumes:
-      - "/home/sbtc-develop/documents_oo/:/docs/:rw"
     privileged: true
     stdin_open: true
     tty: true
