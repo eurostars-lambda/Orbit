@@ -54,7 +54,8 @@ WORKDIR ${ORBIT_PATH}/
 
 COPY docker/sbtc/bash_scripts/runisaac.sh ./
 
-RUN ln -s "/docs" ${ORBIT_PATH}/_docs
+RUN ln -s "/docs" ${ORBIT_PATH}/_docs && \
+    echo "export LIVESTREAM=3" >> ${HOME}/.bashrc
 
 ### Set entrypoint (adjust to your preferences)
 ENTRYPOINT ["bash"]
