@@ -11,3 +11,5 @@ cd /isaac-sim
     # 3840 - 2160
     # 2560 - 1440
     # 1920 - 1080
+
+    # we need to run this through isaac-sim python for full functionality.

@@ -11,6 +11,10 @@ docker run --name orbit_oo --entrypoint bash -it --gpus all -e "ACCEPT_EULA=Y" -
     	-v ~/docker/orbit_oo/documents:/root/Documents:rw \
 		-v ~/docker/orbit_oo/.nvidia-omniverse:/root/.nvidia-omniverse:rw \
 		-v ~/documents_oo/:/docs/:rw \
+		-v ~/documents_oo/sbtc-robots/src/__init__.py:/workspace/orbit/source/extensions/omni.isaac.orbit_assets/omni/isaac/orbit_assets/__init__.py:rw \
+		-v ~/documents_oo/sbtc-robots/src/kinova/kinova.py:/workspace/orbit/source/extensions/omni.isaac.orbit_assets/omni/isaac/orbit_assets/kinova.py:rw \
+		-v ~/documents_oo/sbtc-gym/src/contrib_tasks/:/workspace/orbit/source/extensions/omni.isaac.contrib_tasks/omni/isaac/contrib_tasks/:rw \
+		-v ~/documents_oo/sbtc-rl/:/workspace/orbit/source/standalone/sbtc-rl/:rw \
 		orbit_sbtc_v0.2.0
 
 		#-v ~/documents_oo/sbtc-robots/src/omni.isaac.doosan/:/isaac-sim/exts/omni.isaac.doosan/:rw \
