@@ -1,8 +1,59 @@
 Changelog
 ---------
 
+0.10.19 (2024-02-08)
+~~~~~~~~~~~~~~~~~~~~
+
+Fixed
+^^^^^
+
+* Fixed environment closing so that articulations, objects, and sensors are cleared properly.
+
+
+0.10.18 (2024-02-05)
+~~~~~~~~~~~~~~~~~~~~
+
+Fixed
+^^^^^
+
+* Pinned :mod:`torch` version to 2.0.1 in the setup.py to keep parity version of :mod:`torch` supplied by
+  Isaac 2023.1.1, and prevent version incompatibility between :mod:`torch` ==2.2 and
+  :mod:`typing-extensions` ==3.7.4.3
+
+
+0.10.17 (2024-02-02)
+~~~~~~~~~~~~~~~~~~~~
+
+Fixed
+^^^^^^
+
+* Fixed carb setting ``/app/livestream/enabled`` to be set as False unless live-streaming is specified
+  by :class:`omni.isaac.orbit.app.AppLauncher` settings. This fixes the logic of :meth:`SimulationContext.render`,
+  which depended on the config in previous versions of Isaac defaulting to false for this setting.
+
+
+0.10.16 (2024-01-29)
+~~~~~~~~~~~~~~~~~~~~
+
+Added
+^^^^^^
+
+* Added an offset parameter to the height scan observation term. This allows the user to specify the
+  height offset of the scan from the tracked body. Previously it was hard-coded to be 0.5.
+
+
+0.10.15 (2024-01-29)
+~~~~~~~~~~~~~~~~~~~~
+
+Fixed
+^^^^^
+
+* Fixed joint torque computation for implicit actuators. Earlier, the torque was always zero for implicit
+  actuators. Now, it is computed approximately by applying the PD law.
+
+
 0.10.14 (2024-01-22)
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 Fixed
 ^^^^^
