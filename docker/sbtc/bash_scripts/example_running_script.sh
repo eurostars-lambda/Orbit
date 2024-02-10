@@ -10,6 +10,7 @@ docker run --name orbit_oo --entrypoint bash -it --gpus all -e "ACCEPT_EULA=Y" -
     	-v ~/docker/orbit_oo/data:/root/.local/share/ov/data:rw \
     	-v ~/docker/orbit_oo/documents:/root/Documents:rw \
 		-v ~/docker/orbit_oo/.nvidia-omniverse:/root/.nvidia-omniverse:rw \
+		-v ~/docker/orbit_oo/.vscode-server/:/root/.vscode-server/:rw \
 		-v ~/documents_oo/:/docs/:rw \
 		-v ~/documents_oo/sbtc-robots/src/__init__.py:/workspace/orbit/source/extensions/omni.isaac.orbit_assets/omni/isaac/orbit_assets/__init__.py:rw \
 		-v ~/documents_oo/sbtc-robots/src/kinova/kinova.py:/workspace/orbit/source/extensions/omni.isaac.orbit_assets/omni/isaac/orbit_assets/kinova.py:rw \
