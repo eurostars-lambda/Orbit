@@ -1,6 +1,102 @@
 Changelog
 ---------
 
+0.11.2 (2024-03-04)
+~~~~~~~~~~~~~~~~~~~
+
+Added
+^^^^^
+
+* Added checks for default joint position and joint velocity in the articulation class. This is to prevent
+  users from configuring values for these quantities that might be outside the valid range from the simulation.
+
+
+0.11.1 (2024-02-29)
+~~~~~~~~~~~~~~~~~~~
+
+Added
+^^^^^
+
+* Replaced the default values for ``joint_ids`` and ``body_ids`` from ``None`` to ``slice(None)``
+  in the :class:`omni.isaac.orbit.managers.SceneEntityCfg`.
+* Adapted rewards and observations terms so that the users can query a subset of joints and bodies.
+
+
+0.11.0 (2024-02-27)
+~~~~~~~~~~~~~~~~~~~
+
+Removed
+^^^^^^^
+
+* Dropped support for Isaac Sim<=2022.2. As part of this, removed the components of :class:`omni.isaac.orbit.app.AppLauncher`
+  which handled ROS extension loading. We no longer need them in Isaac Sim>=2023.1 to control the load order to avoid crashes.
+* Upgraded Dockerfile to use ISAACSIM_VERSION=2023.1.1 by default.
+
+
+0.10.28 (2024-02-29)
+~~~~~~~~~~~~~~~~~~~~
+
+Added
+^^^^^
+
+* Implemented relative and moving average joint position action terms. These allow the user to specify
+  the target joint positions as relative to the current joint positions or as a moving average of the
+  joint positions over a window of time.
+
+
+0.10.27 (2024-02-28)
+~~~~~~~~~~~~~~~~~~~~
+
+Added
+^^^^^
+
+* Added UI feature to start and stop animation recording in the stage when running an environment.
+  To enable this feature, please pass the argument ``--disable_fabric`` to the environment script to allow
+  USD read/write operations. Be aware that this will slow down the simulation.
+
+
+0.10.26 (2024-02-26)
+~~~~~~~~~~~~~~~~~~~~
+
+Added
+^^^^^
+
+* Added a viewport camera controller class to the :class:`omni.isaac.orbit.envs.BaseEnv`. This is useful
+  for applications where the user wants to render the viewport from different perspectives even when the
+  simulation is running in headless mode.
+
+
+0.10.25 (2024-02-26)
+~~~~~~~~~~~~~~~~~~~~
+
+Fixed
+^^^^^
+
+* Ensures that all path arguments in :mod:`omni.isaac.orbit.sim.utils` are cast to ``str``. Previously,
+  we had handled path types as strings without casting.
+
+
+0.10.24 (2024-02-26)
+~~~~~~~~~~~~~~~~~~~~
+
+Added
+^^^^^
+
+* Added tracking of contact time in the :class:`omni.isaac.orbit.sensors.ContactSensor` class. Previously,
+  only the air time was being tracked.
+* Added contact force threshold, :attr:`omni.isaac.orbit.sensors.ContactSensorCfg.force_threshold`, to detect
+  when the contact sensor is in contact. Previously, this was set to hard-coded 1.0 in the sensor class.
+
+
+0.10.23 (2024-02-21)
+~~~~~~~~~~~~~~~~~~~~
+
+Fixed
+^^^^^
+
+* Fixes the order of size arguments in :meth:`omni.isaac.orbit.terrains.height_field.random_uniform_terrain`. Previously, the function would crash if the size along x and y were not the same.
+
+
 0.10.22 (2024-02-14)
 ~~~~~~~~~~~~~~~~~~~~
 
