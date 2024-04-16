@@ -7,10 +7,10 @@ from __future__ import annotations
 
 """Launch Isaac Sim Simulator first."""
 
-from omni.isaac.orbit.app import AppLauncher
+from omni.isaac.orbit.app import AppLauncher, run_tests
 
 # launch omniverse app
-simulation_app = AppLauncher(headless=True).app
+simulation_app = AppLauncher(headless=True, experience="omni.isaac.sim.python.gym.headless.kit").app
 
 """Rest everything follows."""
 
@@ -63,6 +63,7 @@ class TestSimulationContext(unittest.TestCase):
         # check valid settings
         self.assertEqual(sim.get_physics_dt(), cfg.dt)
         self.assertEqual(sim.get_rendering_dt(), cfg.dt * cfg.substeps)
+        self.assertFalse(sim.has_rtx_sensors())
         # check valid paths
         self.assertTrue(prim_utils.is_prim_path_valid("/Physics/PhysX"))
         self.assertTrue(prim_utils.is_prim_path_valid("/Physics/PhysX/defaultMaterial"))
@@ -135,7 +136,4 @@ class TestSimulationContext(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    # run main
-    unittest.main(verbosity=2, exit=False)
-    # close sim app
-    simulation_app.close()
+    run_tests()

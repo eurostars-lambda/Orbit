@@ -7,13 +7,11 @@ from __future__ import annotations
 
 """Launch Isaac Sim Simulator first."""
 
-import os
 
-from omni.isaac.orbit.app import AppLauncher
+from omni.isaac.orbit.app import AppLauncher, run_tests
 
 # launch the simulator
-app_experience = f"{os.environ['EXP_PATH']}/omni.isaac.sim.python.gym.headless.kit"
-app_launcher = AppLauncher(headless=True, experience=app_experience)
+app_launcher = AppLauncher(headless=True)
 simulation_app = app_launcher.app
 
 
@@ -45,8 +43,8 @@ class TestStableBaselines3VecEnvWrapper(unittest.TestCase):
                 cls.registered_tasks.append(task_spec.id)
         # sort environments by name
         cls.registered_tasks.sort()
-        # only pick the first three environments to test
-        cls.registered_tasks = cls.registered_tasks[:3]
+        # only pick the first four environments to test
+        cls.registered_tasks = cls.registered_tasks[:4]
         # print all existing task names
         print(">>> All registered environments:", cls.registered_tasks)
 
@@ -58,36 +56,37 @@ class TestStableBaselines3VecEnvWrapper(unittest.TestCase):
     def test_random_actions(self):
         """Run random actions and check environments return valid signals."""
         for task_name in self.registered_tasks:
-            print(f">>> Running test for environment: {task_name}")
-            # create a new stage
-            omni.usd.get_context().new_stage()
-            # parse configuration
-            env_cfg: RLTaskEnvCfg = parse_env_cfg(task_name, use_gpu=self.use_gpu, num_envs=self.num_envs)
+            with self.subTest(task_name=task_name):
+                print(f">>> Running test for environment: {task_name}")
+                # create a new stage
+                omni.usd.get_context().new_stage()
+                # parse configuration
+                env_cfg: RLTaskEnvCfg = parse_env_cfg(task_name, use_gpu=self.use_gpu, num_envs=self.num_envs)
 
-            # create environment
-            env = gym.make(task_name, cfg=env_cfg)
-            # wrap environment
-            env = Sb3VecEnvWrapper(env)
+                # create environment
+                env = gym.make(task_name, cfg=env_cfg)
+                # wrap environment
+                env = Sb3VecEnvWrapper(env)
 
-            # reset environment
-            obs = env.reset()
-            # check signal
-            self.assertTrue(self._check_valid_array(obs))
+                # reset environment
+                obs = env.reset()
+                # check signal
+                self.assertTrue(self._check_valid_array(obs))
 
-            # simulate environment for 1000 steps
-            with torch.inference_mode():
-                for _ in range(1000):
-                    # sample actions from -1 to 1
-                    actions = 2 * np.random.rand(env.num_envs, *env.action_space.shape) - 1
-                    # apply actions
-                    transition = env.step(actions)
-                    # check signals
-                    for data in transition:
-                        self.assertTrue(self._check_valid_array(data), msg=f"Invalid data: {data}")
+                # simulate environment for 1000 steps
+                with torch.inference_mode():
+                    for _ in range(1000):
+                        # sample actions from -1 to 1
+                        actions = 2 * np.random.rand(env.num_envs, *env.action_space.shape) - 1
+                        # apply actions
+                        transition = env.step(actions)
+                        # check signals
+                        for data in transition:
+                            self.assertTrue(self._check_valid_array(data), msg=f"Invalid data: {data}")
 
-            # close the environment
-            print(f">>> Closing environment: {task_name}")
-            env.close()
+                # close the environment
+                print(f">>> Closing environment: {task_name}")
+                env.close()
 
     """
     Helper functions.
@@ -123,7 +122,4 @@ class TestStableBaselines3VecEnvWrapper(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    # run main
-    unittest.main(verbosity=2, exit=False)
-    # close sim app
-    simulation_app.close()
+    run_tests()

@@ -19,7 +19,7 @@ in robotics research (such as RL, learning from demonstrations, and motion plann
 simulation capabilities for photo-realistic scenes and fast and accurate simulation.
 
 Please refer to our [documentation page](https://isaac-orbit.github.io/orbit) to learn more about the
-installation steps, features, and tutorials.
+installation steps, features, tutorials, and how to setup your own project with Orbit.
 
 ## 🎉 Announcement (22.12.2023)
 
@@ -56,9 +56,9 @@ NVIDIA Isaac Sim is available freely under [individual license](https://www.nvid
 
 Orbit framework is released under [BSD-3 License](LICENSE). The license files of its dependencies and assets are present in the [`docs/licenses`](docs/licenses) directory.
 
-## Citation
+## Citing
 
-Please cite [this paper](https://arxiv.org/abs/2301.04195) if you use this framework in your work:
+If you use this framework in your work, please cite [this paper](https://arxiv.org/abs/2301.04195):
 
 ```text
 @article{mittal2023orbit,

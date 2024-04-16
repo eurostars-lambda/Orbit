@@ -136,8 +136,6 @@ class TerminationManager(ManagerBase):
         for key in self._term_dones.keys():
             # store information
             extras["Episode Termination/" + key] = torch.count_nonzero(self._term_dones[key][env_ids]).item()
-            # reset episode dones
-            self._term_dones[key][env_ids] = False
         # reset all the reward terms
         for term_cfg in self._class_term_cfgs:
             term_cfg.func.reset(env_ids=env_ids)
@@ -165,7 +163,7 @@ class TerminationManager(ManagerBase):
             else:
                 self._terminated_buf |= value
             # add to episode dones
-            self._term_dones[name] |= value
+            self._term_dones[name][:] = value
         # return combined termination signal
         return self._truncated_buf | self._terminated_buf
 
