@@ -4,8 +4,8 @@ services:
     build:
       context: ../../
       dockerfile: docker/sbtc/dockerfile-orbit
-    image: orbit_sbtc_v0.2.0
-    container_name: orbit_sbtc_v0.2.0
+    image: orbit_sbtc_v0.3.0
+    container_name: orbit_sbtc_v0.3.0
     network_mode: "host"
     privileged: true
     stdin_open: true
