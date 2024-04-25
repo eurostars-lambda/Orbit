@@ -5,19 +5,6 @@
     "version": "0.2.0",
     "configurations": [
         {
-            "name": "Python: Current SBTC File",
-            "type": "python",
-            "request": "launch",
-            "program": "${file}",
-            "console": "integratedTerminal",
-            "env": {
-                "EXP_PATH": "${workspaceFolder}/_isaac_sim/apps",
-                "RESOURCE_NAME": "IsaacSim"
-            },
-            "envFile": "${workspaceFolder}/.vscode/.python.env",
-            "preLaunchTask": "setup_sbtc_env"
-        },
-        {
             "name": "Python: Current File",
             "type": "python",
             "request": "launch",
