@@ -9,7 +9,6 @@
 # docker compose build --no-cache --progress=plain > build_output.txt 
 
 ARG ISAACSIM_VERSION=2023.1.1
-#ARG ISAACSIM_VERSION=2023.1.0-hotfix.1
 
 FROM nvcr.io/nvidia/isaac-sim:${ISAACSIM_VERSION}
 
@@ -60,6 +59,9 @@ RUN ln -s "/docs" ${ORBIT_PATH}/_docs && \
 
 ### For some reason, psutil is not installed properly for isaac-sim
 RUN DEBIAN_FRONTEND=noninteractive ${ORBIT_PATH}/_isaac_sim/python.sh -m pip install psutil
+
+### Install torch-tb-profiler as vscode asks for it too many times
+RUN DEBIAN_FRONTEND=noninteractive pip install torch-tb-profiler
 
 ### Set entrypoint (adjust to your preferences)
 ENTRYPOINT ["bash"]
