@@ -119,6 +119,93 @@ services:
     stdin_open: true
     tty: true
 
+  # This service adds SBTC modifications
+  # on top of the base image
+  orbit-sbtc:
+    profiles: ["sbtc"]
+    env_file:
+      - .env.base
+      - .env.sbtc
+    build:
+      context: ../
+      dockerfile: docker/Dockerfile.sbtc
+      args:
+        - DOCKER_ORBIT_PATH=${DOCKER_ORBIT_PATH}
+    image: ${IMAGE_NAME} # image: orbit-sbtc
+    container_name: orbit-sbtc #container_name: ${CONTAINER_NAME}
+    environment: *default-orbit-environment
+    volumes:
+      #  Default Orbit volumes repeated here because YAML cannot merge arrays
+      - type: volume
+        source: isaac-cache-kit
+        target: ${DOCKER_ISAACSIM_ROOT_PATH}/kit/cache
+      - type: volume
+        source: isaac-cache-ov
+        target: ${DOCKER_USER_HOME}/.cache/ov
+      - type: volume
+        source: isaac-cache-pip
+        target: ${DOCKER_USER_HOME}/.cache/pip
+      - type: volume
+        source: isaac-cache-gl
+        target: ${DOCKER_USER_HOME}/.cache/nvidia/GLCache
+      - type: volume
+        source: isaac-cache-compute
+        target: ${DOCKER_USER_HOME}/.nv/ComputeCache
+      - type: volume
+        source: isaac-logs
+        target: ${DOCKER_USER_HOME}/.nvidia-omniverse/logs
+      - type: volume
+        source: isaac-carb-logs
+        target: ${DOCKER_ISAACSIM_ROOT_PATH}/kit/logs/Kit/Isaac-Sim
+      - type: volume
+        source: isaac-data
+        target: ${DOCKER_USER_HOME}/.local/share/ov/data
+      - type: volume
+        source: isaac-docs
+        target: ${DOCKER_USER_HOME}/Documents
+      - type: bind
+        source: ../source
+        target: /workspace/orbit/source
+      - type: bind
+        source: ../docs
+        target: /workspace/orbit/docs
+      - type: volume
+        source: orbit-docs
+        target: /workspace/orbit/docs/_build
+      - type: volume
+        source: orbit-logs
+        target: /workspace/orbit/logs
+      - type: volume
+        source: orbit-data
+        target: /workspace/orbit/data_storage
+      # SBTC Custom volumes
+      - type: volume
+        source: isaac-cache-miniconda
+        target: /opt/miniconda/pkgs
+      - type: volume
+        source: isaac-config
+        target: ${DOCKER_USER_HOME}/.nvidia-omniverse/config
+      - type: volume
+        source: vscode-server
+        target: ${DOCKER_USER_HOME}/.vscode-server
+      - type: bind
+        source: ../../sbtc-robots/src/kinova/kinova.py
+        target: ${DOCKER_ORBIT_PATH}/source/extensions/omni.isaac.orbit_assets/omni/isaac/orbit_assets/kinova.py
+        read_only: false
+      - type: bind
+        source: ../../sbtc-gym/src/sbtc/
+        target: ${DOCKER_ORBIT_PATH}/source/extensions/omni.isaac.orbit_tasks/omni/isaac/orbit_tasks/sbtc/
+        read_only: false
+      - type: bind
+        source: ../../sbtc-rl/
+        target: ${DOCKER_ORBIT_PATH}/source/standalone/sbtc-rl/
+        read_only: false
+    network_mode: host
+    deploy: *default-orbit-deploy
+    entrypoint: bash
+    stdin_open: true
+    tty: true
+
 volumes:
   # isaac-sim
   isaac-cache-kit:
@@ -134,3 +221,7 @@ volumes:
   orbit-docs:
   orbit-logs:
   orbit-data:
+  # sbtc
+  isaac-cache-miniconda:
+  isaac-config:
+  vscode-server:
