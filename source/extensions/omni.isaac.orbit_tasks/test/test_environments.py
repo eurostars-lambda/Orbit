@@ -3,29 +3,21 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-from __future__ import annotations
-
 """Launch Isaac Sim Simulator first."""
 
-import os
-
-from omni.isaac.orbit.app import AppLauncher
+from omni.isaac.orbit.app import AppLauncher, run_tests
 
 # launch the simulator
-app_experience = f"{os.environ['EXP_PATH']}/omni.isaac.sim.python.gym.headless.kit"
-app_launcher = AppLauncher(headless=True, experience=app_experience)
+app_launcher = AppLauncher(headless=True)
 simulation_app = app_launcher.app
 
 
 """Rest everything follows."""
 
-
 import gymnasium as gym
 import torch
-import traceback
 import unittest
 
-import carb
 import omni.usd
 
 from omni.isaac.orbit.envs import RLTaskEnv, RLTaskEnvCfg
@@ -60,12 +52,13 @@ class TestEnvironments(unittest.TestCase):
         use_gpu = True
         # iterate over all registered environments
         for task_name in self.registered_tasks:
-            print(f">>> Running test for environment: {task_name}")
-            # check environment
-            self._check_random_actions(task_name, use_gpu, num_envs, num_steps=100)
-            # close the environment
-            print(f">>> Closing environment: {task_name}")
-            print("-" * 80)
+            with self.subTest(task_name=task_name):
+                print(f">>> Running test for environment: {task_name}")
+                # check environment
+                self._check_random_actions(task_name, use_gpu, num_envs, num_steps=100)
+                # close the environment
+                print(f">>> Closing environment: {task_name}")
+                print("-" * 80)
 
     def test_single_instance_gpu(self):
         """Run all environments with single instance and check environments return valid signals."""
@@ -74,12 +67,13 @@ class TestEnvironments(unittest.TestCase):
         use_gpu = True
         # iterate over all registered environments
         for task_name in self.registered_tasks:
-            print(f">>> Running test for environment: {task_name}")
-            # check environment
-            self._check_random_actions(task_name, use_gpu, num_envs, num_steps=100)
-            # close the environment
-            print(f">>> Closing environment: {task_name}")
-            print("-" * 80)
+            with self.subTest(task_name=task_name):
+                print(f">>> Running test for environment: {task_name}")
+                # check environment
+                self._check_random_actions(task_name, use_gpu, num_envs, num_steps=100)
+                # close the environment
+                print(f">>> Closing environment: {task_name}")
+                print("-" * 80)
 
     """
     Helper functions.
@@ -137,12 +131,4 @@ class TestEnvironments(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    try:
-        unittest.main()
-    except Exception as err:
-        carb.log_error(err)
-        carb.log_error(traceback.format_exc())
-        raise
-    finally:
-        # close sim app
-        simulation_app.close()
+    run_tests()

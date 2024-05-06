@@ -3,13 +3,14 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-from __future__ import annotations
-
 import builtins
 import enum
 import numpy as np
 import sys
+import traceback
 import weakref
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any
 
 import carb
@@ -18,9 +19,10 @@ import omni.physx
 from omni.isaac.core.simulation_context import SimulationContext as _SimulationContext
 from omni.isaac.core.utils.viewports import set_camera_view
 from omni.isaac.version import get_version
-from pxr import Gf, Usd
+from pxr import Gf, PhysxSchema, Usd, UsdPhysics
 
 from .simulation_cfg import SimulationCfg
+from .spawners import DomeLightCfg, GroundPlaneCfg
 from .utils import bind_physics_material
 
 
@@ -34,7 +36,7 @@ class SimulationContext(_SimulationContext):
     * playing, pausing, stepping and stopping the simulation
     * adding and removing callbacks to different simulation events such as physics stepping, rendering, etc.
 
-    This class inherits from the `omni.isaac.core.simulation_context.SimulationContext`_ class and
+    This class inherits from the :class:`omni.isaac.core.simulation_context.SimulationContext` class and
     adds additional functionalities such as setting up the simulation context with a configuration object,
     exposing other commonly used simulator-related functions, and performing version checks of Isaac Sim
     to ensure compatibility between releases.
@@ -63,8 +65,6 @@ class SimulationContext(_SimulationContext):
     Based on above, for most functions in this class there is an equivalent function that is suffixed
     with ``_async``. The ``_async`` functions are used in the Omniverse extension mode and
     the non-``_async`` functions are used in the standalone python script mode.
-
-    .. _omni.isaac.core.simulation_context.SimulationContext: https://docs.omniverse.nvidia.com/py/isaacsim/source/extensions/omni.isaac.core/docs/index.html#module-omni.isaac.core.simulation_context
     """
 
     class RenderMode(enum.IntEnum):
@@ -77,7 +77,7 @@ class SimulationContext(_SimulationContext):
            extensions that are running in the background that need to be updated when the simulation is running.
         2. **Cameras**: These are typically based on Hydra textures and are used to render the scene from different
            viewpoints. They can be attached to a viewport or be used independently to render the scene.
-        3. **`Viewports`**: These are windows where you can see the rendered scene.
+        3. **Viewports**: These are windows where you can see the rendered scene.
 
         Updating each of the above components has a different overhead. For example, updating the viewports is
         computationally expensive compared to updating the UI elements. Therefore, it is useful to be able to
@@ -143,7 +143,7 @@ class SimulationContext(_SimulationContext):
         # read flag for whether the orbit viewport capture pipeline will be used,
         # casting None to False if the flag doesn't exist
         # this flag is set from the AppLauncher class
-        self._offscreen_render = bool(carb_settings_iface.get("/orbit/offscreen_render/enabled"))
+        self._offscreen_render = bool(carb_settings_iface.get("/orbit/render/offscreen"))
         # flag for whether any GUI will be rendered (local, livestreamed or viewport)
         self._has_gui = self._local_gui or self._livestream_gui
 
@@ -229,9 +229,37 @@ class SimulationContext(_SimulationContext):
     def has_gui(self) -> bool:
         """Returns whether the simulation has a GUI enabled.
 
-        The simulation has a GUI enabled either locally or livestreamed.
+        True if the simulation has a GUI enabled either locally or live-streamed.
         """
         return self._has_gui
+
+    def has_rtx_sensors(self) -> bool:
+        """Returns whether the simulation has any RTX-rendering related sensors.
+
+        This function returns the value of the simulation parameter ``"/orbit/render/rtx_sensors"``.
+        The parameter is set to True when instances of RTX-related sensors (cameras or LiDARs) are
+        created using Orbit's sensor classes.
+
+        True if the simulation has RTX sensors (such as USD Cameras or LiDARs).
+
+        For more information, please check `NVIDIA RTX documentation`_.
+
+        .. _NVIDIA RTX documentation: https://www.nvidia.com/design-visualization/solutions/rendering/
+        """
+        return self._settings.get_as_bool("/orbit/render/rtx_sensors")
+
+    def is_fabric_enabled(self) -> bool:
+        """Returns whether the fabric interface is enabled.
+
+        When fabric interface is enabled, USD read/write operations are disabled. Instead all applications
+        read and write the simulation state directly from the fabric interface. This reduces a lot of overhead
+        that occurs during USD read/write operations.
+
+        For more information, please check `Fabric documentation`_.
+
+        .. _Fabric documentation: https://docs.omniverse.nvidia.com/kit/docs/usdrt/latest/docs/usd_fabric_usdrt.html
+        """
+        return self._fabric_iface is not None
 
     def get_version(self) -> tuple[int, int, int]:
         """Returns the version of the simulator.
@@ -473,8 +501,8 @@ class SimulationContext(_SimulationContext):
     def _set_additional_physx_params(self):
         """Sets additional PhysX parameters that are not directly supported by the parent class."""
         # obtain the physics scene api
-        physics_scene = self._physics_context._physics_scene  # pyright: ignore [reportPrivateUsage]
-        physx_scene_api = self._physics_context._physx_scene_api  # pyright: ignore [reportPrivateUsage]
+        physics_scene: UsdPhysics.Scene = self._physics_context._physics_scene
+        physx_scene_api: PhysxSchema.PhysxSceneAPI = self._physics_context._physx_scene_api
         # assert that scene api is not None
         if physx_scene_api is None:
             raise RuntimeError("Physics scene API is None! Please create the scene first.")
@@ -502,18 +530,12 @@ class SimulationContext(_SimulationContext):
         physics_scene.CreateGravityDirectionAttr(Gf.Vec3f(*gravity_direction))
         physics_scene.CreateGravityMagnitudeAttr(gravity_magnitude)
 
-        # simulation iteration count
-        if self.get_version()[0] == 2022:
-            # position and velocity iteration counts
-            physx_scene_api.CreateMinIterationCountAttr(self.cfg.physx.min_position_iteration_count)
-            physx_scene_api.CreateMaxIterationCountAttr(self.cfg.physx.max_position_iteration_count)
-        else:
-            # position iteration count
-            physx_scene_api.CreateMinPositionIterationCountAttr(self.cfg.physx.min_position_iteration_count)
-            physx_scene_api.CreateMaxPositionIterationCountAttr(self.cfg.physx.max_position_iteration_count)
-            # velocity iteration count
-            physx_scene_api.CreateMinVelocityIterationCountAttr(self.cfg.physx.min_velocity_iteration_count)
-            physx_scene_api.CreateMaxVelocityIterationCountAttr(self.cfg.physx.max_velocity_iteration_count)
+        # position iteration count
+        physx_scene_api.CreateMinPositionIterationCountAttr(self.cfg.physx.min_position_iteration_count)
+        physx_scene_api.CreateMaxPositionIterationCountAttr(self.cfg.physx.max_position_iteration_count)
+        # velocity iteration count
+        physx_scene_api.CreateMinVelocityIterationCountAttr(self.cfg.physx.min_velocity_iteration_count)
+        physx_scene_api.CreateMaxVelocityIterationCountAttr(self.cfg.physx.max_velocity_iteration_count)
 
         # create the default physics material
         # this material is used when no material is specified for a primitive
@@ -524,25 +546,12 @@ class SimulationContext(_SimulationContext):
         bind_physics_material(self.cfg.physics_prim_path, material_path)
 
     def _load_fabric_interface(self):
-        """Loads the flatcache/fabric interface if enabled."""
-        # check isaac sim version
-        # note: flatcache is called fabric in isaac sim 2023.x
-        #   in isaac sim 2022.x, we use physx-flatcache module
-        #   in isaac sim 2023.x, we use physx-fabric module
-        if self.get_version()[0] == 2022:
-            # check if flatcache is enabled
-            if self.cfg.use_flatcache:
-                from omni.physxflatcache import get_physx_flatcache_interface
+        """Loads the fabric interface if enabled."""
+        if self.cfg.use_fabric:
+            from omni.physxfabric import get_physx_fabric_interface
 
-                # acquire flatcache interface
-                self._fabric_iface = get_physx_flatcache_interface()
-        else:
-            # check if fabric is enabled
-            if self.cfg.use_fabric:
-                from omni.physxfabric import get_physx_fabric_interface
-
-                # acquire fabric interface
-                self._fabric_iface = get_physx_fabric_interface()
+            # acquire fabric interface
+            self._fabric_iface = get_physx_fabric_interface()
 
     """
     Callbacks.
@@ -599,3 +608,101 @@ class SimulationContext(_SimulationContext):
             self.app.shutdown()
             # disabled on linux to avoid a crash
             carb.get_framework().unload_all_plugins()
+
+
+@contextmanager
+def build_simulation_context(
+    create_new_stage: bool = True,
+    gravity_enabled: bool = True,
+    device: str = "cuda:0",
+    dt: float = 0.01,
+    sim_cfg: SimulationCfg | None = None,
+    add_ground_plane: bool = False,
+    add_lighting: bool = False,
+    auto_add_lighting: bool = False,
+) -> Iterator[SimulationContext]:
+    """Context manager to build a simulation context with the provided settings.
+
+    This function facilitates the creation of a simulation context and provides flexibility in configuring various
+    aspects of the simulation, such as time step, gravity, device, and scene elements like ground plane and
+    lighting.
+
+    If :attr:`sim_cfg` is None, then an instance of :class:`SimulationCfg` is created with default settings, with parameters
+    overwritten based on arguments to the function.
+
+    An example usage of the context manager function:
+
+    ..  code-block:: python
+
+        with build_simulation_context() as sim:
+             # Design the scene
+
+             # Play the simulation
+             sim.reset()
+             while sim.is_playing():
+                 sim.step()
+
+    Args:
+        create_new_stage: Whether to create a new stage. Defaults to True.
+        gravity_enabled: Whether to enable gravity in the simulation. Defaults to True.
+        device: Device to run the simulation on. Defaults to "cuda:0".
+        dt: Time step for the simulation: Defaults to 0.01.
+        sim_cfg: :class:`omni.isaac.orbit.sim.SimulationCfg` to use for the simulation. Defaults to None.
+        add_ground_plane: Whether to add a ground plane to the simulation. Defaults to False.
+        add_lighting: Whether to add a dome light to the simulation. Defaults to False.
+        auto_add_lighting: Whether to automatically add a dome light to the simulation if the simulation has a GUI.
+            Defaults to False. This is useful for debugging tests in the GUI.
+
+    Yields:
+        The simulation context to use for the simulation.
+
+    """
+    try:
+        if create_new_stage:
+            stage_utils.create_new_stage()
+
+        if sim_cfg is None:
+            # Construct one and overwrite the dt, gravity, and device
+            sim_cfg = SimulationCfg(dt=dt)
+
+            # Set up gravity
+            if gravity_enabled:
+                sim_cfg.gravity = (0.0, 0.0, -9.81)
+            else:
+                sim_cfg.gravity = (0.0, 0.0, 0.0)
+
+            # Set device
+            sim_cfg.device = device
+
+        # Construct simulation context
+        sim = SimulationContext(sim_cfg)
+
+        if add_ground_plane:
+            # Ground-plane
+            cfg = GroundPlaneCfg()
+            cfg.func("/World/defaultGroundPlane", cfg)
+
+        if add_lighting or (auto_add_lighting and sim.has_gui()):
+            # Lighting
+            cfg = DomeLightCfg(
+                color=(0.1, 0.1, 0.1),
+                enable_color_temperature=True,
+                color_temperature=5500,
+                intensity=10000,
+            )
+            # Dome light named specifically to avoid conflicts
+            cfg.func(prim_path="/World/defaultDomeLight", cfg=cfg, translation=(0.0, 0.0, 10.0))
+
+        yield sim
+
+    except Exception:
+        carb.log_error(traceback.format_exc())
+        raise
+    finally:
+        if not sim.has_gui():
+            # Stop simulation only if we aren't rendering otherwise the app will hang indefinitely
+            sim.stop()
+
+        # Clear the stage
+        sim.clear_all_callbacks()
+        sim.clear_instance()

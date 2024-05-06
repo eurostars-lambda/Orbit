@@ -25,6 +25,7 @@
 # Docker/Singularity
 **/*.sif
 docker/exports/
+docker/.container.yaml
 
 # IDE
 **/.idea/
@@ -55,3 +56,4 @@ _build
 # RL-Games
 **/runs/*
 **/logs/*
+**/recordings/*

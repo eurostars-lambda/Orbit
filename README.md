@@ -4,7 +4,7 @@
 
 # Orbit
 
-[![IsaacSim](https://img.shields.io/badge/IsaacSim-2023.1.0--hotfix.1-silver.svg)](https://docs.omniverse.nvidia.com/isaacsim/latest/overview.html)
+[![IsaacSim](https://img.shields.io/badge/IsaacSim-2023.1.1-silver.svg)](https://docs.omniverse.nvidia.com/isaacsim/latest/overview.html)
 [![Python](https://img.shields.io/badge/python-3.10-blue.svg)](https://docs.python.org/3/whatsnew/3.10.html)
 [![Linux platform](https://img.shields.io/badge/platform-linux--64-orange.svg)](https://releases.ubuntu.com/20.04/)
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit&logoColor=white)](https://pre-commit.com/)
@@ -19,17 +19,17 @@ in robotics research (such as RL, learning from demonstrations, and motion plann
 simulation capabilities for photo-realistic scenes and fast and accurate simulation.
 
 Please refer to our [documentation page](https://isaac-orbit.github.io/orbit) to learn more about the
-installation steps, features, and tutorials.
+installation steps, features, tutorials, and how to set up your project with Orbit.
 
-## 🎉 Announcement (22.12.2023)
+## Announcements
 
-We're excited to announce merging of our latest development branch into the main branch! This update introduces
-several improvements and fixes to enhance the modularity and user-friendliness of the framework. We have added
-several new environments, especially for legged locomotion, and are in the process of adding new environments.
+* [17.04.2024] [**v0.3.0**](https://github.com/NVIDIA-Omniverse/orbit/releases/tag/v0.3.0):
+  Several improvements and bug fixes to the framework. Includes cabinet opening and dexterous manipulation environments,
+  terrain-aware patch sampling, and animation recording.
 
-Feel free to explore the latest changes and updates. We appreciate your ongoing support and contributions!
-
-For more details, please check the post here: [#106](https://github.com/NVIDIA-Omniverse/Orbit/discussions/106)
+* [22.12.2023] [**v0.2.0**](https://github.com/NVIDIA-Omniverse/orbit/releases/tag/v0.2.0):
+  Significant breaking updates to enhance the modularity and user-friendliness of the framework. Also includes
+  procedural terrain generation, warp-based custom ray-casters, and legged-locomotion environments.
 
 ## Contributing to Orbit
 
@@ -56,9 +56,9 @@ NVIDIA Isaac Sim is available freely under [individual license](https://www.nvid
 
 Orbit framework is released under [BSD-3 License](LICENSE). The license files of its dependencies and assets are present in the [`docs/licenses`](docs/licenses) directory.
 
-## Citation
+## Citing
 
-Please cite [this paper](https://arxiv.org/abs/2301.04195) if you use this framework in your work:
+If you use this framework in your work, please cite [this paper](https://arxiv.org/abs/2301.04195):
 
 ```text
 @article{mittal2023orbit,

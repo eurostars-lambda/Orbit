@@ -3,6 +3,7 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
+# needed to import for allowing type-hinting: np.ndarray | None
 from __future__ import annotations
 
 import gymnasium as gym
@@ -94,9 +95,9 @@ class RLTaskEnv(BaseEnv, gym.Env):
 
         # setup the action and observation spaces for Gym
         self._configure_gym_env_spaces()
-        # perform randomization at the start of the simulation
-        if "startup" in self.randomization_manager.available_modes:
-            self.randomization_manager.randomize(mode="startup")
+        # perform events at the start of the simulation
+        if "startup" in self.event_manager.available_modes:
+            self.event_manager.apply(mode="startup")
         # print the environment information
         print("[INFO]: Completed setting up the environment...")
 
@@ -120,18 +121,19 @@ class RLTaskEnv(BaseEnv, gym.Env):
 
     def load_managers(self):
         # note: this order is important since observation manager needs to know the command and action managers
+        # and the reward manager needs to know the termination manager
         # -- command manager
         self.command_manager: CommandManager = CommandManager(self.cfg.commands, self)
         print("[INFO] Command Manager: ", self.command_manager)
         # call the parent class to load the managers for observations and actions.
         super().load_managers()
         # prepare the managers
-        # -- reward manager
-        self.reward_manager = RewardManager(self.cfg.rewards, self)
-        print("[INFO] Reward Manager: ", self.reward_manager)
         # -- termination manager
         self.termination_manager = TerminationManager(self.cfg.terminations, self)
         print("[INFO] Termination Manager: ", self.termination_manager)
+        # -- reward manager
+        self.reward_manager = RewardManager(self.cfg.rewards, self)
+        print("[INFO] Reward Manager: ", self.reward_manager)
         # -- curriculum manager
         self.curriculum_manager = CurriculumManager(self.cfg.curriculum, self)
         print("[INFO] Curriculum Manager: ", self.curriculum_manager)
@@ -172,7 +174,7 @@ class RLTaskEnv(BaseEnv, gym.Env):
             # update buffers at sim dt
             self.scene.update(dt=self.physics_dt)
         # perform rendering if gui is enabled
-        if self.sim.has_gui():
+        if self.sim.has_gui() or self.sim.has_rtx_sensors():
             self.sim.render()
 
         # post-step:
@@ -192,9 +194,9 @@ class RLTaskEnv(BaseEnv, gym.Env):
             self._reset_idx(reset_env_ids)
         # -- update command
         self.command_manager.compute(dt=self.step_dt)
-        # -- step interval randomization
-        if "interval" in self.randomization_manager.available_modes:
-            self.randomization_manager.randomize(mode="interval", dt=self.step_dt)
+        # -- step interval events
+        if "interval" in self.event_manager.available_modes:
+            self.event_manager.apply(mode="interval", dt=self.step_dt)
         # -- compute observations
         # note: done after reset to get the correct observations for reset envs
         self.obs_buf = self.observation_manager.compute()
@@ -202,7 +204,7 @@ class RLTaskEnv(BaseEnv, gym.Env):
         # return observations, rewards, resets and extras
         return self.obs_buf, self.reward_buf, self.reset_terminated, self.reset_time_outs, self.extras
 
-    def render(self) -> np.ndarray | None:
+    def render(self, recompute: bool = False) -> np.ndarray | None:
         """Run rendering without stepping through the physics.
 
         By convention, if mode is:
@@ -210,6 +212,10 @@ class RLTaskEnv(BaseEnv, gym.Env):
         - **human**: Render to the current display and return nothing. Usually for human consumption.
         - **rgb_array**: Return an numpy.ndarray with shape (x, y, 3), representing RGB values for an
           x-by-y pixel image, suitable for turning into a video.
+
+        Args:
+            recompute: Whether to force a render even if the simulator has already rendered the scene.
+                Defaults to False.
 
         Returns:
             The rendered image as a numpy array if mode is "rgb_array". Otherwise, returns None.
@@ -221,7 +227,9 @@ class RLTaskEnv(BaseEnv, gym.Env):
             NotImplementedError: If an unsupported rendering mode is specified.
         """
         # run a rendering step of the simulator
-        self.sim.render()
+        # if we have rtx sensors, we do not need to render again sin
+        if not self.sim.has_rtx_sensors() and not recompute:
+            self.sim.render()
         # decide the rendering mode
         if self.render_mode == "human" or self.render_mode is None:
             return None
@@ -309,9 +317,9 @@ class RLTaskEnv(BaseEnv, gym.Env):
         self.curriculum_manager.compute(env_ids=env_ids)
         # reset the internal buffers of the scene elements
         self.scene.reset(env_ids)
-        # randomize the MDP for environments that need a reset
-        if "reset" in self.randomization_manager.available_modes:
-            self.randomization_manager.randomize(env_ids=env_ids, mode="reset")
+        # apply events such as randomizations for environments that need a reset
+        if "reset" in self.event_manager.available_modes:
+            self.event_manager.apply(env_ids=env_ids, mode="reset")
 
         # iterate over all managers and reset them
         # this returns a dictionary of information which is stored in the extras
@@ -332,8 +340,8 @@ class RLTaskEnv(BaseEnv, gym.Env):
         # -- command manager
         info = self.command_manager.reset(env_ids)
         self.extras["log"].update(info)
-        # -- randomization manager
-        info = self.randomization_manager.reset(env_ids)
+        # -- event manager
+        info = self.event_manager.reset(env_ids)
         self.extras["log"].update(info)
         # -- termination manager
         info = self.termination_manager.reset(env_ids)

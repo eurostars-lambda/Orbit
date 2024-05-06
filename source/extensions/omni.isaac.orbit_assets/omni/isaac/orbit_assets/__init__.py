@@ -3,11 +3,6 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-# Copyright (c) 2022, NVIDIA CORPORATION & AFFILIATES, ETH Zurich, and University of Toronto
-# All rights reserved.
-#
-# SPDX-License-Identifier: BSD-3-Clause
-
 """Package containing asset and sensor configurations."""
 
 import os
@@ -31,9 +26,13 @@ __version__ = ORBIT_ASSETS_METADATA["package"]["version"]
 # Configuration for different assets.
 ##
 
+from .allegro import *
 from .anymal import *
 from .cartpole import *
 from .franka import *
+from .kinova import *
 from .ridgeback_franka import *
+from .sawyer import *
+from .shadow_hand import *
 from .unitree import *
 from .universal_robots import *

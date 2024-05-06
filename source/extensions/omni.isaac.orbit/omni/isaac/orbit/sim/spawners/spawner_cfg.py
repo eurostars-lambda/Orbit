@@ -51,7 +51,12 @@ class SpawnerCfg:
     spawned asset in the class avocado and the color green, the semantic tags would be
     ``[("class", "avocado"), ("color", "green")]``.
 
-    .. _Replicator Semantic: https://docs.omniverse.nvidia.com/extensions/latest/ext_replicator/semantics_schema_editor.html
+    .. seealso::
+
+        For more information on the semantics filter, see the documentation for the `semantics schema editor`_.
+
+    .. _semantics schema editor: https://docs.omniverse.nvidia.com/extensions/latest/ext_replicator/semantics_schema_editor.html#semantics-filtering
+
     """
 
     copy_from_source: bool = True
@@ -78,8 +83,14 @@ class RigidObjectSpawnerCfg(SpawnerCfg):
 
     mass_props: schemas.MassPropertiesCfg | None = None
     """Mass properties."""
+
     rigid_props: schemas.RigidBodyPropertiesCfg | None = None
-    """Rigid body properties."""
+    """Rigid body properties.
+
+    For making a rigid object static, set the :attr:`schemas.RigidBodyPropertiesCfg.kinematic_enabled`
+    as True. This will make the object static and will not be affected by gravity or other forces.
+    """
+
     collision_props: schemas.CollisionPropertiesCfg | None = None
     """Properties to apply to all collision meshes."""
 

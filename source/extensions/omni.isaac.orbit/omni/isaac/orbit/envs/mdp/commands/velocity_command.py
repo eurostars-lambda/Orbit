@@ -92,6 +92,18 @@ class UniformVelocityCommand(CommandTerm):
     Implementation specific functions.
     """
 
+    def _update_metrics(self):
+        # time for which the command was executed
+        max_command_time = self.cfg.resampling_time_range[1]
+        max_command_step = max_command_time / self._env.step_dt
+        # logs data
+        self.metrics["error_vel_xy"] += (
+            torch.norm(self.vel_command_b[:, :2] - self.robot.data.root_lin_vel_b[:, :2], dim=-1) / max_command_step
+        )
+        self.metrics["error_vel_yaw"] += (
+            torch.abs(self.vel_command_b[:, 2] - self.robot.data.root_ang_vel_b[:, 2]) / max_command_step
+        )
+
     def _resample_command(self, env_ids: Sequence[int]):
         # sample velocity commands
         r = torch.empty(len(env_ids), device=self.device)
@@ -120,8 +132,9 @@ class UniformVelocityCommand(CommandTerm):
             # resolve indices of heading envs
             env_ids = self.is_heading_env.nonzero(as_tuple=False).flatten()
             # compute angular velocity
+            heading_error = math_utils.wrap_to_pi(self.heading_target[env_ids] - self.robot.data.heading_w[env_ids])
             self.vel_command_b[env_ids, 2] = torch.clip(
-                0.5 * math_utils.wrap_to_pi(self.heading_target[env_ids] - self.robot.data.heading_w[env_ids]),
+                self.cfg.heading_control_stiffness * heading_error,
                 min=self.cfg.ranges.ang_vel_z[0],
                 max=self.cfg.ranges.ang_vel_z[1],
             )
@@ -129,18 +142,6 @@ class UniformVelocityCommand(CommandTerm):
         # TODO: check if conversion is needed
         standing_env_ids = self.is_standing_env.nonzero(as_tuple=False).flatten()
         self.vel_command_b[standing_env_ids, :] = 0.0
-
-    def _update_metrics(self):
-        # time for which the command was executed
-        max_command_time = self.cfg.resampling_time_range[1]
-        max_command_step = max_command_time / self._env.step_dt
-        # logs data
-        self.metrics["error_vel_xy"] += (
-            torch.norm(self.vel_command_b[:, :2] - self.robot.data.root_lin_vel_b[:, :2], dim=-1) / max_command_step
-        )
-        self.metrics["error_vel_yaw"] += (
-            torch.abs(self.vel_command_b[:, 2] - self.robot.data.root_ang_vel_b[:, 2]) / max_command_step
-        )
 
     def _set_debug_vis_impl(self, debug_vis: bool):
         # set visibility of markers

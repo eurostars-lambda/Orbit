@@ -3,13 +3,15 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
+# needed to import for allowing type-hinting: Usd.Stage | None
 from __future__ import annotations
 
 import carb
 import omni.isaac.core.utils.stage as stage_utils
+import omni.physx.scripts.utils as physx_utils
 from pxr import PhysxSchema, Usd, UsdPhysics
 
-from ..utils import apply_nested, safe_set_attribute_on_usd_schema
+from ..utils import apply_nested, find_global_fixed_joint_prim, safe_set_attribute_on_usd_schema
 from . import schemas_cfg
 
 """
@@ -52,7 +54,7 @@ def define_articulation_root_properties(
 @apply_nested
 def modify_articulation_root_properties(
     prim_path: str, cfg: schemas_cfg.ArticulationRootPropertiesCfg, stage: Usd.Stage | None = None
-):
+) -> bool:
     """Modify PhysX parameters for an articulation root prim.
 
     The `articulation root`_ marks the root of an articulation tree. For floating articulations, this should be on
@@ -65,6 +67,12 @@ def modify_articulation_root_properties(
     The properties are applied to the articulation root prim. The common properties (such as solver position
     and velocity iteration counts, sleep threshold, stabilization threshold) take precedence over those specified
     in the rigid body schemas for all the rigid bodies in the articulation.
+
+    .. caution::
+        When the attribute :attr:`schemas_cfg.ArticulationRootPropertiesCfg.fix_root_link` is set to True,
+        a fixed joint is created between the root link and the world frame (if it does not already exist). However,
+        to deal with physics parser limitations, the articulation root schema needs to be applied to the parent of
+        the root link.
 
     .. note::
         This function is decorated with :func:`apply_nested` that set the properties to all the prims
@@ -79,6 +87,12 @@ def modify_articulation_root_properties(
         cfg: The configuration for the articulation root.
         stage: The stage where to find the prim. Defaults to None, in which case the
             current stage is used.
+
+    Returns:
+        True if the properties were successfully set, False otherwise.
+
+    Raises:
+        NotImplementedError: When the root prim is not a rigid body and a fixed joint is to be created.
     """
     # obtain stage
     if stage is None:
@@ -95,9 +109,67 @@ def modify_articulation_root_properties(
 
     # convert to dict
     cfg = cfg.to_dict()
+    # extract non-USD properties
+    fix_root_link = cfg.pop("fix_root_link", None)
+
     # set into physx api
     for attr_name, value in cfg.items():
         safe_set_attribute_on_usd_schema(physx_articulation_api, attr_name, value, camel_case=True)
+
+    # fix root link based on input
+    # we do the fixed joint processing later to not interfere with setting other properties
+    if fix_root_link is not None:
+        # check if a global fixed joint exists under the root prim
+        existing_fixed_joint_prim = find_global_fixed_joint_prim(prim_path)
+
+        # if we found a fixed joint, enable/disable it based on the input
+        # otherwise, create a fixed joint between the world and the root link
+        if existing_fixed_joint_prim is not None:
+            carb.log_info(
+                f"Found an existing fixed joint for the articulation: '{prim_path}'. Setting it to: {fix_root_link}."
+            )
+            existing_fixed_joint_prim.GetJointEnabledAttr().Set(fix_root_link)
+        elif fix_root_link:
+            carb.log_info(f"Creating a fixed joint for the articulation: '{prim_path}'.")
+
+            # note: we have to assume that the root prim is a rigid body,
+            #   i.e. we don't handle the case where the root prim is not a rigid body but has articulation api on it
+            # Currently, there is no obvious way to get first rigid body link identified by the PhysX parser
+            if not articulation_prim.HasAPI(UsdPhysics.RigidBodyAPI):
+                raise NotImplementedError(
+                    f"The articulation prim '{prim_path}' does not have the RigidBodyAPI applied."
+                    " To create a fixed joint, we need to determine the first rigid body link in"
+                    " the articulation tree. However, this is not implemented yet."
+                )
+
+            # create a fixed joint between the root link and the world frame
+            physx_utils.createJoint(stage=stage, joint_type="Fixed", from_prim=None, to_prim=articulation_prim)
+
+            # Having a fixed joint on a rigid body is not treated as "fixed base articulation".
+            # instead, it is treated as a part of the maximal coordinate tree.
+            # Moving the articulation root to the parent solves this issue. This is a limitation of the PhysX parser.
+            # get parent prim
+            parent_prim = articulation_prim.GetParent()
+            # apply api to parent
+            UsdPhysics.ArticulationRootAPI.Apply(parent_prim)
+            PhysxSchema.PhysxArticulationAPI.Apply(parent_prim)
+
+            # copy the attributes
+            # -- usd attributes
+            usd_articulation_api = UsdPhysics.ArticulationRootAPI(articulation_prim)
+            for attr_name in usd_articulation_api.GetSchemaAttributeNames():
+                attr = articulation_prim.GetAttribute(attr_name)
+                parent_prim.GetAttribute(attr_name).Set(attr.Get())
+            # -- physx attributes
+            physx_articulation_api = PhysxSchema.PhysxArticulationAPI(articulation_prim)
+            for attr_name in physx_articulation_api.GetSchemaAttributeNames():
+                attr = articulation_prim.GetAttribute(attr_name)
+                parent_prim.GetAttribute(attr_name).Set(attr.Get())
+
+            # remove api from root
+            articulation_prim.RemoveAPI(UsdPhysics.ArticulationRootAPI)
+            articulation_prim.RemoveAPI(PhysxSchema.PhysxArticulationAPI)
+
     # success
     return True
 
@@ -142,7 +214,7 @@ def define_rigid_body_properties(
 @apply_nested
 def modify_rigid_body_properties(
     prim_path: str, cfg: schemas_cfg.RigidBodyPropertiesCfg, stage: Usd.Stage | None = None
-):
+) -> bool:
     """Modify PhysX parameters for a rigid body prim.
 
     A `rigid body`_ is a single body that can be simulated by PhysX. It can be either dynamic or kinematic.
@@ -166,6 +238,9 @@ def modify_rigid_body_properties(
         cfg: The configuration for the rigid body.
         stage: The stage where to find the prim. Defaults to None, in which case the
             current stage is used.
+
+    Returns:
+        True if the properties were successfully set, False otherwise.
     """
     # obtain stage
     if stage is None:
@@ -234,7 +309,7 @@ def define_collision_properties(
 @apply_nested
 def modify_collision_properties(
     prim_path: str, cfg: schemas_cfg.CollisionPropertiesCfg, stage: Usd.Stage | None = None
-):
+) -> bool:
     """Modify PhysX properties of collider prim.
 
     These properties are based on the `UsdPhysics.CollisionAPI`_ and `PhysxSchema.PhysxCollisionAPI`_ schemas.
@@ -256,6 +331,9 @@ def modify_collision_properties(
         cfg: The configuration for the collider.
         stage: The stage where to find the prim. Defaults to None, in which case the
             current stage is used.
+
+    Returns:
+        True if the properties were successfully set, False otherwise.
     """
     # obtain stage
     if stage is None:
@@ -320,7 +398,7 @@ def define_mass_properties(prim_path: str, cfg: schemas_cfg.MassPropertiesCfg, s
 
 
 @apply_nested
-def modify_mass_properties(prim_path: str, cfg: schemas_cfg.MassPropertiesCfg, stage: Usd.Stage | None = None):
+def modify_mass_properties(prim_path: str, cfg: schemas_cfg.MassPropertiesCfg, stage: Usd.Stage | None = None) -> bool:
     """Set properties for the mass of a rigid body prim.
 
     These properties are based on the `UsdPhysics.MassAPI` schema. If the mass is not defined, the density is used
@@ -345,6 +423,9 @@ def modify_mass_properties(prim_path: str, cfg: schemas_cfg.MassPropertiesCfg, s
         cfg: The configuration for the mass properties.
         stage: The stage where to find the prim. Defaults to None, in which case the
             current stage is used.
+
+    Returns:
+        True if the properties were successfully set, False otherwise.
     """
     # obtain stage
     if stage is None:
@@ -431,5 +512,142 @@ def activate_contact_sensors(prim_path: str, threshold: float = 0.0, stage: Usd.
             f"No contact sensors added to the prim: '{prim_path}'. This means that no rigid bodies"
             " are present under this prim. Please check the prim path."
         )
+    # success
+    return True
+
+
+"""
+Joint drive properties.
+"""
+
+
+@apply_nested
+def modify_joint_drive_properties(
+    prim_path: str, drive_props: schemas_cfg.JointDrivePropertiesCfg, stage: Usd.Stage | None = None
+) -> bool:
+    """Modify PhysX parameters for a joint prim.
+
+    This function checks if the input prim is a prismatic or revolute joint and applies the joint drive schema
+    on it. If the joint is a tendon (i.e., it has the `PhysxTendonAxisAPI`_ schema applied on it), then the joint
+    drive schema is not applied.
+
+    Based on the configuration, this method modifies the properties of the joint drive. These properties are
+    based on the `UsdPhysics.DriveAPI`_ schema. For more information on the properties, please refer to the
+    official documentation.
+
+    .. caution::
+
+        We highly recommend modifying joint properties of articulations through the functionalities in the
+        :mod:`omni.isaac.orbit.actuators` module. The methods here are for setting simulation low-level
+        properties only.
+
+    .. _UsdPhysics.DriveAPI: https://openusd.org/dev/api/class_usd_physics_drive_a_p_i.html
+    .. _PhysxTendonAxisAPI: https://docs.omniverse.nvidia.com/kit/docs/omni_usd_schema_physics/104.2/class_physx_schema_physx_tendon_axis_a_p_i.html
+
+    Args:
+        prim_path: The prim path where to apply the joint drive schema.
+        drive_props: The configuration for the joint drive.
+        stage: The stage where to find the prim. Defaults to None, in which case the
+            current stage is used.
+
+    Returns:
+        True if the properties were successfully set, False otherwise.
+
+    Raises:
+        ValueError: If the input prim path is not valid.
+    """
+    # obtain stage
+    if stage is None:
+        stage = stage_utils.get_current_stage()
+    # get USD prim
+    prim = stage.GetPrimAtPath(prim_path)
+    # check if prim path is valid
+    if not prim.IsValid():
+        raise ValueError(f"Prim path '{prim_path}' is not valid.")
+
+    # check if prim has joint drive applied on it
+    if prim.IsA(UsdPhysics.RevoluteJoint):
+        drive_api_name = "angular"
+    elif prim.IsA(UsdPhysics.PrismaticJoint):
+        drive_api_name = "linear"
+    else:
+        return False
+    # check that prim is not a tendon child prim
+    # note: root prim is what "controls" the tendon so we still want to apply the drive to it
+    if prim.HasAPI(PhysxSchema.PhysxTendonAxisAPI) and not prim.HasAPI(PhysxSchema.PhysxTendonAxisRootAPI):
+        return False
+
+    # check if prim has joint drive applied on it
+    usd_drive_api = UsdPhysics.DriveAPI(prim, drive_api_name)
+    if not usd_drive_api:
+        usd_drive_api = UsdPhysics.DriveAPI.Apply(prim, drive_api_name)
+
+    # change the drive type to input
+    if drive_props.drive_type is not None:
+        usd_drive_api.CreateTypeAttr().Set(drive_props.drive_type)
+
+    return True
+
+
+"""
+Fixed tendon properties.
+"""
+
+
+@apply_nested
+def modify_fixed_tendon_properties(
+    prim_path: str, cfg: schemas_cfg.FixedTendonPropertiesCfg, stage: Usd.Stage | None = None
+) -> bool:
+    """Modify PhysX parameters for a fixed tendon attachment prim.
+
+    A `fixed tendon`_ can be used to link multiple degrees of freedom of articulation joints
+    through length and limit constraints. For instance, it can be used to set up an equality constraint
+    between a driven and passive revolute joints.
+
+    The schema comprises of attributes that belong to the `PhysxTendonAxisRootAPI`_ schema.
+
+    .. note::
+        This function is decorated with :func:`apply_nested` that sets the properties to all the prims
+        (that have the schema applied on them) under the input prim path.
+
+    .. _fixed tendon: https://nvidia-omniverse.github.io/PhysX/physx/5.3.1/_api_build/class_px_articulation_fixed_tendon.html
+    .. _PhysxTendonAxisRootAPI: https://docs.omniverse.nvidia.com/kit/docs/omni_usd_schema_physics/104.2/class_physx_schema_physx_tendon_axis_root_a_p_i.html
+
+    Args:
+        prim_path: The prim path to the tendon attachment.
+        cfg: The configuration for the tendon attachment.
+        stage: The stage where to find the prim. Defaults to None, in which case the
+            current stage is used.
+
+    Returns:
+        True if the properties were successfully set, False otherwise.
+
+    Raises:
+        ValueError: If the input prim path is not valid.
+    """
+    # obtain stage
+    if stage is None:
+        stage = stage_utils.get_current_stage()
+    # get USD prim
+    tendon_prim = stage.GetPrimAtPath(prim_path)
+    # check if prim has fixed tendon applied on it
+    has_root_fixed_tendon = tendon_prim.HasAPI(PhysxSchema.PhysxTendonAxisRootAPI)
+    if not has_root_fixed_tendon:
+        return False
+
+    # resolve all available instances of the schema since it is multi-instance
+    for schema_name in tendon_prim.GetAppliedSchemas():
+        # only consider the fixed tendon schema
+        if "PhysxTendonAxisRootAPI" not in schema_name:
+            continue
+        # retrieve the USD tendon api
+        instance_name = schema_name.split(":")[-1]
+        physx_tendon_axis_api = PhysxSchema.PhysxTendonAxisRootAPI(tendon_prim, instance_name)
+
+        # convert to dict
+        cfg = cfg.to_dict()
+        # set into PhysX API
+        for attr_name, value in cfg.items():
+            safe_set_attribute_on_usd_schema(physx_tendon_axis_api, attr_name, value, camel_case=True)
     # success
     return True

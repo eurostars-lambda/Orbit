@@ -14,8 +14,6 @@ This script checks if the external force is applied correctly on the robot.
     ./orbit.sh -p source/extensions/omni.isaac.orbit/test/assets/check_external_force.py --body .*_SHANK --force 100
 """
 
-from __future__ import annotations
-
 """Launch Isaac Sim Simulator first."""
 
 
@@ -39,9 +37,6 @@ simulation_app = app_launcher.app
 """Rest everything follows."""
 
 import torch
-import traceback
-
-import carb
 
 import omni.isaac.orbit.sim as sim_utils
 from omni.isaac.orbit.assets import Articulation
@@ -128,13 +123,7 @@ def main():
 
 
 if __name__ == "__main__":
-    try:
-        # run the main execution
-        main()
-    except Exception as err:
-        carb.log_error(err)
-        carb.log_error(traceback.format_exc())
-        raise
-    finally:
-        # close sim app
-        simulation_app.close()
+    # run the main function
+    main()
+    # close sim app
+    simulation_app.close()

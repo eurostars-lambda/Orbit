@@ -3,23 +3,19 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-from __future__ import annotations
-
 """Launch Isaac Sim Simulator first."""
 
-from omni.isaac.orbit.app import AppLauncher
+from omni.isaac.orbit.app import AppLauncher, run_tests
 
 # launch omniverse app
-simulation_app = AppLauncher(headless=True).app
+simulation_app = AppLauncher(headless=True, experience="omni.isaac.sim.python.gym.headless.kit").app
 
 """Rest everything follows."""
 
 import ctypes
 import numpy as np
-import traceback
 import unittest
 
-import carb
 import omni.isaac.core.utils.prims as prim_utils
 from omni.isaac.core.simulation_context import SimulationContext as IsaacSimulationContext
 
@@ -65,6 +61,7 @@ class TestSimulationContext(unittest.TestCase):
         # check valid settings
         self.assertEqual(sim.get_physics_dt(), cfg.dt)
         self.assertEqual(sim.get_rendering_dt(), cfg.dt * cfg.substeps)
+        self.assertFalse(sim.has_rtx_sensors())
         # check valid paths
         self.assertTrue(prim_utils.is_prim_path_valid("/Physics/PhysX"))
         self.assertTrue(prim_utils.is_prim_path_valid("/Physics/PhysX/defaultMaterial"))
@@ -78,7 +75,7 @@ class TestSimulationContext(unittest.TestCase):
         sim = SimulationContext()
         version = sim.get_version()
         self.assertTrue(len(version) > 0)
-        self.assertTrue(version[0] >= 2022)
+        self.assertTrue(version[0] >= 2023)
 
     def test_carb_setting(self):
         """Test setting carb settings."""
@@ -137,12 +134,4 @@ class TestSimulationContext(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    try:
-        unittest.main()
-    except Exception as err:
-        carb.log_error(err)
-        carb.log_error(traceback.format_exc())
-        raise
-    finally:
-        # close sim app
-        simulation_app.close()
+    run_tests()

@@ -13,7 +13,7 @@ while [[ "$#" -gt 0 ]]; do
             "check the terminal messages to find the real port number."
             shift
             ;;
-        *) 
+        *)
             echo "Unknown parameter passed: $1"
             exit 1
             ;;

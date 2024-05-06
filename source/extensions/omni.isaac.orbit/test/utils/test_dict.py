@@ -3,13 +3,11 @@
 #
 # SPDX-License-Identifier: BSD-3-Clause
 
-from __future__ import annotations
-
 # NOTE: While we don't actually use the simulation app in this test, we still need to launch it
 #       because warp is only available in the context of a running simulation
 """Launch Isaac Sim Simulator first."""
 
-from omni.isaac.orbit.app import AppLauncher
+from omni.isaac.orbit.app import AppLauncher, run_tests
 
 # launch omniverse app
 app_launcher = AppLauncher(headless=True)
@@ -17,10 +15,7 @@ simulation_app = app_launcher.app
 
 """Rest everything follows."""
 
-import traceback
 import unittest
-
-import carb
 
 import omni.isaac.orbit.utils.dict as dict_utils
 
@@ -86,12 +81,4 @@ class TestDictUtilities(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    try:
-        unittest.main()
-    except Exception as err:
-        carb.log_error(err)
-        carb.log_error(traceback.format_exc())
-        raise
-    finally:
-        # close sim app
-        simulation_app.close()
+    run_tests()
