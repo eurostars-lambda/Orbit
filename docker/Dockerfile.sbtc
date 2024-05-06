@@ -1,5 +1,5 @@
-# Dockerfile to install Orbit + Isaac Sim, with conda as the default env. 
-# 
+# Dockerfile to install Orbit + Isaac Sim, with conda as the default env.
+#
 # Written by Özhan Özen, SBTC, Switzerland Innovation Park Biel/Bienne.
 
 
@@ -18,12 +18,12 @@ RUN DEBIAN_FRONTEND=noninteractive \
     /opt/miniconda/bin/conda init bash
 
 ENV PATH="/opt/miniconda/bin:$PATH"
-RUN conda update -n base -c defaults conda 
+RUN conda update -n base -c defaults conda
 
 # Activate Orbit conda environment and run setup scripts
 RUN --mount=type=cache,target=/opt/miniconda/pkgs \
     DEBIAN_FRONTEND=noninteractive ${DOCKER_ORBIT_PATH}/orbit.sh --conda
-    
+
 RUN echo "conda deactivate && conda activate orbit" >> ${HOME}/.bashrc
 
 SHELL ["/opt/miniconda/bin/conda", "run", "-n", "orbit", "/bin/bash", "-c"]
