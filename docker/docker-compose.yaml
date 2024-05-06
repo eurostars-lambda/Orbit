@@ -189,16 +189,16 @@ services:
         source: vscode-server
         target: ${DOCKER_USER_HOME}/.vscode-server
       - type: bind
-        source: ../../sbtc-robots/src/kinova/kinova.py
+        source: ../../lambda-robots/src/kinova/kinova.py
         target: ${DOCKER_ORBIT_PATH}/source/extensions/omni.isaac.orbit_assets/omni/isaac/orbit_assets/kinova.py
         read_only: false
       - type: bind
-        source: ../../sbtc-gym/src/sbtc/
+        source: ../../lambda-gym/src/sbtc/
         target: ${DOCKER_ORBIT_PATH}/source/extensions/omni.isaac.orbit_tasks/omni/isaac/orbit_tasks/sbtc/
         read_only: false
       - type: bind
-        source: ../../sbtc-rl/
-        target: ${DOCKER_ORBIT_PATH}/source/standalone/sbtc-rl/
+        source: ../../lambda-rl/
+        target: ${DOCKER_ORBIT_PATH}/source/standalone/lambda-rl/
         read_only: false
     network_mode: host
     deploy: *default-orbit-deploy
